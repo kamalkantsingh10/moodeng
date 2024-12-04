@@ -8,6 +8,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+spidev = "^3.6"
+st7789 = "^1.0.1"
 
 
 [build-system]

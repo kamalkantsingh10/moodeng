@@ -1,37 +1,32 @@
 from robot_hat import Pin,TTS,Servo, PWM
+from robot_hat.utils import get_battery_voltage
 import time
 
 
 pin = Pin("LED")
 tts=TTS(lang='en-GB')
 pin1 = PWM("P0")
-ser = Servo(channel=8)                      # set the servo angle
-faceServo=Servo(channel=9)
-faceServo1=Servo(channel=1)
-
-faceServo2=Servo(channel=0)
+tail_base1 = Servo(channel= 5)                      # set the servo angle
+tail_base2 = Servo(channel=10)    
+tail_base = Servo(channel=11) 
 ms_del =50
 
 for i in range (1,25):
-    pin.value(1)
-    val = ser.angle(60)
+    tail_base2.angle(-30)
     time.sleep(ms_del/1000)
-    faceServo.angle(-60)
+    tail_base1.angle(70)
+    time.sleep(0.3)
+    tail_base.angle(30)
+    time.sleep(0.3)
+    tail_base2.angle(30)
     time.sleep(ms_del/1000)
-    faceServo1.angle(-60)
-    time.sleep(ms_del/1000)
-    faceServo2.angle(60)
-    time.sleep(2)
-    tts.say("doing the phase number " + str(i))
-    pin.value(0)
-    val = ser.angle(-60)
-    time.sleep(ms_del/1000)
-    faceServo2.angle(-60)
-    time.sleep(ms_del/1000)
-    faceServo.angle(60)
-    time.sleep(ms_del/1000)
-    faceServo1.angle(60)
-    time.sleep(2)
-    tts.say("I am done")
-    print(i)
+    tail_base1.angle(-50)
+    time.sleep(0.3)
+    tail_base.angle(-70)
+    time.sleep(0.3)
+    print(str(i) + "    battery: "+str(get_battery_voltage()))
 
+tail_base1.angle(0)
+tail_base2.angle(0)
+
+tail_base.angle(0)
