@@ -1,78 +1,51 @@
-#!/usr/bin/python3
-
-from luma.lcd.device import st7789
-from luma.core.interface.serial import spi
-from luma.core.render import canvas
-from PIL import ImageFont
+import RPi.GPIO as GPIO
+import spidev
 import time
 
-# Pin Definitions (BCM numbering)
-# ============================================
-# Change these numbers according to your wiring
-RST_PIN = 4    # Reset pin
-DC_PIN = 27     # Data/Command pin (sometimes labeled as CD)
-CS_PIN = 8      # Chip Select pin
-BL_PIN = 22     # Backlight pin (if your display has it)
+DC_PIN = 22
+RST_PIN = 27
 
-# Note: Other pins that must be connected but don't need GPIO numbers:
-# SDA/MOSI -> Connect to MOSI (GPIO 10)
-# SCL/SCK  -> Connect to SCLK (GPIO 11)
-# VCC      -> Connect to 3.3V
-# GND      -> Connect to Ground
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup([DC_PIN, RST_PIN], GPIO.OUT)
 
-def init_display():
-    # Initialize SPI interface
-    serial = spi(
-        port=0,           # SPI port 0
-        device=0,         # CE0 (use 1 for CE1)
-        gpio_DC=DC_PIN,   # Data/Command pin
-        gpio_RST=RST_PIN, # Reset pin
-        bus_speed_hz=32000000
-    )
+spi = spidev.SpiDev()
+spi.open(0, 0)
+spi.max_speed_hz = 2000000
+spi.mode = 0
+
+def command(cmd):
+    GPIO.output(DC_PIN, GPIO.LOW)
+    spi.xfer([cmd])
+
+def data(d):
+    GPIO.output(DC_PIN, GPIO.HIGH)
+    spi.xfer([d])
+
+try:
+    GPIO.output(RST_PIN, GPIO.LOW)
+    time.sleep(0.1)
+    GPIO.output(RST_PIN, GPIO.HIGH)
+    time.sleep(0.1)
+
+    command(0x11)  # Sleep out
+    time.sleep(0.2)
+    command(0x29)  # Display on
     
-    # Initialize the display device
-    device = st7789(
-        serial,
-        width=280,        # Display width
-        height=240,       # Display height
-        rotate=1          # Rotation (0, 1, 2, 3) each represents 90 degree rotation
-    )
-    
-    return device
+    # Fill red - only try once
+    command(0x2C)
+    pixels_sent = 0
+    total_pixels = 240 * 240
+    while pixels_sent < total_pixels:
+        data(0xFF)
+        data(0x00)
+        data(0x00)
+        pixels_sent += 1
+        if pixels_sent % 1000 == 0:
+            print(f"Sent {pixels_sent}/{total_pixels} pixels")
 
-def main():
-    print("Initializing display...")
-    device = init_display()
-    
-    # Try to load a font, fall back to default if not found
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-    except:
-        font = ImageFont.load_default()
-    
-    print("Starting demo...")
-    
-    while True:
-        # Draw frame
-        with canvas(device) as draw:
-            # Draw a border
-            draw.rectangle(device.bounding_box, outline="white")
-            
-            # Draw some shapes
-            draw.rectangle((40, 40, 100, 100), fill="red")
-            draw.ellipse((120, 40, 180, 100), fill="blue")
-            draw.polygon([(200, 40), (260, 100), (200, 100)], fill="green")
-            
-            # Add text
-            draw.text((40, 120), "ST7789 Demo", fill="white", font=font)
-            draw.text((40, 150), f"CS={CS_PIN}, DC={DC_PIN}", fill="yellow", font=font)
-            draw.text((40, 180), f"RST={RST_PIN}, BL={BL_PIN}", fill="yellow", font=font)
-        
-        # Wait for 2 seconds
-        time.sleep(2)
-
-
-
-
-
-main()
+except KeyboardInterrupt:
+    pass
+finally:
+    GPIO.cleanup()
+    spi.close()
